@@ -3,7 +3,6 @@ package cn.kennylee.learning.rocketmq.spring;
 import lombok.Builder;
 import lombok.Data;
 import org.apache.rocketmq.client.AccessChannel;
-import org.apache.rocketmq.common.message.MessageExt;
 import org.apache.rocketmq.common.protocol.heartbeat.MessageModel;
 import org.springframework.lang.NonNull;
 import org.springframework.util.Assert;
@@ -18,7 +17,7 @@ import java.util.Objects;
  * @author kennylee
  */
 @Data
-public abstract class AbstractMessageHandler {
+public abstract class AbstractMessageHandler<T> {
     private String topic;
     private String tags;
     private MessageModel messageModel = MessageModel.CLUSTERING;
@@ -48,9 +47,9 @@ public abstract class AbstractMessageHandler {
     /**
      * <p>处理消息</p>
      *
-     * @param messageExt 消息内容
+     * @param message 消息内容
      */
-    public abstract void onMessage(@NonNull MessageExt messageExt);
+    public abstract void onMessage(@NonNull T message);
 
     @Data
     @Builder

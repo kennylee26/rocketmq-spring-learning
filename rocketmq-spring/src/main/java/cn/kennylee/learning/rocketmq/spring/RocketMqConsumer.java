@@ -1,5 +1,6 @@
 package cn.kennylee.learning.rocketmq.spring;
 
+import com.google.gson.Gson;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.rocketmq.client.consumer.DefaultMQPushConsumer;
@@ -15,6 +16,8 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -25,14 +28,17 @@ import java.util.UUID;
  * @author kennylee
  */
 @Slf4j
-public class RocketMqConsumer implements InitializingBean, DisposableBean {
+public class RocketMqConsumer<T> implements InitializingBean, DisposableBean {
     @Getter
     private final DefaultMQPushConsumer consumer;
+    private Type messageType;
 
     public RocketMqConsumer(@NonNull String group, @NonNull String nameSrvAddr,
                             @Nullable String instanceName,
-                            @NonNull AbstractMessageHandler messageHandler) {
+                            @NonNull AbstractMessageHandler<T> messageHandler) {
         super();
+        this.messageType = ((ParameterizedType) messageHandler.getClass().getGenericSuperclass()).getActualTypeArguments()[0];
+        log.debug("messageType {}", messageType != null ? messageType.getTypeName() : "null");
 
         DefaultMQPushConsumer o = new DefaultMQPushConsumer(group);
         o.setNamesrvAddr(nameSrvAddr);
@@ -62,7 +68,7 @@ public class RocketMqConsumer implements InitializingBean, DisposableBean {
                         }
 
                         try {
-                            messageHandler.onMessage(messageExt);
+                            messageHandler.onMessage(convertMessage(messageExt));
                         } catch (Exception e) {
                             log.error(e.getMessage(), e);
                             context.setDelayLevelWhenNextConsume(messageHandler.getDelayLevelWhenNextConsume());
@@ -82,16 +88,14 @@ public class RocketMqConsumer implements InitializingBean, DisposableBean {
                                     messageExt.getKeys(),
                                     new String(messageExt.getBody(), RocketMqProducer.DEFAULT_CHARSET));
                         }
-
                         try {
-                            messageHandler.onMessage(messageExt);
+                            messageHandler.onMessage(convertMessage(messageExt));
                         } catch (Exception e) {
                             log.error(e.getMessage(), e);
                             context.setSuspendCurrentQueueTimeMillis(messageHandler.getSuspendCurrentQueueTimeMillis());
                             return ConsumeOrderlyStatus.SUSPEND_CURRENT_QUEUE_A_MOMENT;
                         }
                     }
-
                     return ConsumeOrderlyStatus.SUCCESS;
                 });
                 break;
@@ -102,8 +106,28 @@ public class RocketMqConsumer implements InitializingBean, DisposableBean {
         this.consumer = o;
     }
 
+    @SuppressWarnings("unchecked")
+    private T convertMessage(MessageExt messageExt) {
+        if (Objects.equals(messageType.getTypeName(), MessageExt.class.getTypeName())) {
+            return (T) messageExt;
+        } else {
+            String str = new String(messageExt.getBody(), RocketMqProducer.DEFAULT_CHARSET);
+            if (Objects.equals(messageType.getTypeName(), String.class.getTypeName())) {
+                return (T) str;
+            } else {
+                // If msgType not string, use objectMapper change it.
+                try {
+                    return new Gson().fromJson(str, this.messageType);
+                } catch (Exception e) {
+                    log.info("convert failed. str:{}, msgType:{}", str, messageType);
+                    throw new RuntimeException("cannot convert message to " + messageType, e);
+                }
+            }
+        }
+    }
+
     public RocketMqConsumer(@NonNull String producerGroup, @NonNull String nameSrvAddr,
-                            @NonNull AbstractMessageHandler messageHandler) {
+                            @NonNull AbstractMessageHandler<T> messageHandler) {
         this(producerGroup, nameSrvAddr, null, messageHandler);
     }
 

@@ -1,5 +1,6 @@
 package cn.kennylee.learning.rocketmq.spring;
 
+import com.alibaba.fastjson.JSON;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.rocketmq.client.exception.MQBrokerException;
@@ -28,6 +29,8 @@ import java.util.UUID;
  */
 @Slf4j
 public class RocketMqProducer implements InitializingBean, DisposableBean {
+    public static final String DATE_FORMAT = "YYYY-MM-dd HH:mm:ss";
+
     @Getter
     private final DefaultMQProducer producer;
     static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
@@ -71,10 +74,18 @@ public class RocketMqProducer implements InitializingBean, DisposableBean {
      * @throws InterruptedException if the sending thread is interrupted.
      */
     @NonNull
-    public SendResult syncSend(@NonNull final String topic, @NonNull final String tags, @NonNull final String keys, @NonNull final String payload)
+    public SendResult syncSend(@NonNull final String topic, @NonNull final String tags, @NonNull final String keys,
+                               @NonNull final String payload)
             throws InterruptedException, RemotingException, MQClientException, MQBrokerException {
         final Message message = new Message(topic, tags, keys, payload.getBytes(DEFAULT_CHARSET));
         return this.getProducer().send(message);
+    }
+
+    @NonNull
+    public <T> SendResult syncSend(@NonNull final String topic, @NonNull final String tags, @NonNull final String keys,
+                                   @NonNull final T payload)
+            throws InterruptedException, RemotingException, MQClientException, MQBrokerException {
+        return this.syncSend(topic, tags, keys, toJson(payload));
     }
 
     /**
@@ -95,6 +106,16 @@ public class RocketMqProducer implements InitializingBean, DisposableBean {
         this.getProducer().sendOneway(message);
     }
 
+    public <T> void sendOneWay(@NonNull final String topic, @NonNull final String tags,
+                               @NonNull final String keys, @NonNull final T payload)
+            throws InterruptedException, RemotingException, MQClientException {
+        this.sendOneWay(topic, tags, keys, toJson(payload));
+    }
+
+    private <T> String toJson(@NonNull T payload) {
+        return JSON.toJSONStringWithDateFormat(payload, DATE_FORMAT);
+    }
+
     /**
      * <p>异步发送消息</p>
      *
@@ -108,10 +129,18 @@ public class RocketMqProducer implements InitializingBean, DisposableBean {
      * @throws InterruptedException if the sending thread is interrupted.
      */
     public void asyncSend(@NonNull final String topic, @NonNull final String tags,
-                          @NonNull final String keys, @NonNull final String payload, @NonNull SendCallback sendCallback)
+                          @NonNull final String keys, @NonNull final String payload,
+                          @NonNull SendCallback sendCallback)
             throws RemotingException, MQClientException, InterruptedException {
         final Message message = new Message(topic, tags, keys, payload.getBytes(DEFAULT_CHARSET));
         this.getProducer().send(message, sendCallback);
+    }
+
+    public <T> void asyncSend(@NonNull final String topic, @NonNull final String tags,
+                              @NonNull final String keys, @NonNull final T payload,
+                              @NonNull SendCallback sendCallback)
+            throws RemotingException, MQClientException, InterruptedException {
+        this.asyncSend(topic, tags, keys, toJson(payload), sendCallback);
     }
 
     @Override
