@@ -26,6 +26,8 @@ sh run-docker-rocketmq.sh
 sh clear-docker-rocketmq.sh
 ```
 
+>注：默认broker注册ip为`127.0.0.1`端口`10911`，自定义请自行修改 **docker-rocketmq/conf/broker.conf** 文件
+
 ## 实践总结
 
 1. 若使用docker部署进行部署，请注意网络问题，因为在NameServer返回的RocketMQ访问方式是属于内部的，应用跟docker不处于同一个网络的话，无法进行访问。需要在部署broker的时候指定好 `brokerIP1` 和 `listenPort`。
