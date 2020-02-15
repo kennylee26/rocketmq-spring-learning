@@ -2,13 +2,11 @@ package cn.kennylee.learning.rocketmq.spring;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.rocketmq.client.exception.MQBrokerException;
-import org.apache.rocketmq.client.exception.MQClientException;
 import org.apache.rocketmq.client.producer.SendResult;
 import org.apache.rocketmq.client.producer.SendStatus;
 import org.apache.rocketmq.common.message.MessageExt;
-import org.apache.rocketmq.remoting.exception.RemotingException;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.lang.NonNull;
@@ -38,27 +36,31 @@ class RocketmqSpringApplicationTests {
 
     /**
      * 测试发送（不管结果）和接收。
-     * <p>注：可能由于集群特性，单元测试中的新消费者未必都能马上收到服务器给的新投递消息，所以可能会造成单元测试失败。</p>
      */
-    @Test
-    public void testRocketMqProducer_oneWay() throws InterruptedException, MQClientException, RemotingException {
+    @RepeatedTest(5)
+    public void testRocketMqProducer_oneWay() throws Exception {
         final String key = UUID.randomUUID().toString();
         final String payload = "Hello World@" + new Date().getTime();
 
-        this.rocketMqProducer.sendOneWay(getTopic(), RocketmqSpringApplication.CONSUMER1_TAGS, key, payload);
+        this.rocketMqProducer.sendOneWay(
+                rocketMqClientProperties.getRocketmq().getTopic(),
+                RocketmqSpringApplication.TAGS_1,
+                key, payload);
         assertMatch(key, payload);
     }
 
     /**
      * 测试发送并验证结果和测试接收。
-     * <p>注：可能由于集群特性，单元测试中的新消费者未必都能马上收到服务器给的新投递消息，所以可能会造成单元测试失败。</p>
      */
-    @Test
-    public void testRocketMqProducer_syncSend() throws InterruptedException, MQClientException, RemotingException, MQBrokerException {
+    @RepeatedTest(5)
+    public void testRocketMqProducer_syncSend() throws Exception {
         final String key = UUID.randomUUID().toString();
         final String payload = "Hello World@" + new Date().getTime();
 
-        SendResult result = this.rocketMqProducer.syncSend(getTopic(), RocketmqSpringApplication.CONSUMER1_TAGS, key, payload);
+        SendResult result = this.rocketMqProducer.syncSend(
+                rocketMqClientProperties.getRocketmq().getTopic(),
+                RocketmqSpringApplication.TAGS_1,
+                key, payload);
         Assertions.assertEquals(SendStatus.SEND_OK, result.getSendStatus());
         assertMatch(key, payload);
     }
@@ -95,10 +97,6 @@ class RocketmqSpringApplicationTests {
         return consumerMessageContainer.stream()
                 .filter(o -> StringUtils.equals(o.getKeys(), keys)
                 ).findFirst().orElse(null);
-    }
-
-    private String getTopic() {
-        return rocketMqClientProperties.getRocketmq().getTopic();
     }
 
 }

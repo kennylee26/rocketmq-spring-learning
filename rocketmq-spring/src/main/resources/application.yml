@@ -1,8 +1,6 @@
 app:
   rocketmq:
-    topic: rocketmq-learning
+    topic: rocketmq-learning-spring
     namesrvAddr: localhost:9876
-    consumer:
-      group: consumer-group
     producer:
       group: roducer-group

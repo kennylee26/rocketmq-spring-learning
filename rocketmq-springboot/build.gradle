@@ -31,6 +31,9 @@ dependencies {
 	testImplementation('org.springframework.boot:spring-boot-starter-test') {
 		exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
 	}
+
+	compile group: 'org.apache.rocketmq', name: 'rocketmq-spring-boot-starter', version: '2.0.4'
+	testCompileOnly 'org.projectlombok:lombok'
 }
 
 test {

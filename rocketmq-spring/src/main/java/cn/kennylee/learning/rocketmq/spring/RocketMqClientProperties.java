@@ -18,13 +18,7 @@ public class RocketMqClientProperties {
     public static class Rocketmq {
         private String topic;
         private String namesrvAddr;
-        private Consumer consumer;
         private Producer producer;
-    }
-
-    @Data
-    public static class Consumer {
-        private String group;
     }
 
     @Data
