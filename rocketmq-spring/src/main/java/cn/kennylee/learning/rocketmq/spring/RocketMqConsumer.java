@@ -3,6 +3,7 @@ package cn.kennylee.learning.rocketmq.spring;
 import com.google.gson.Gson;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.rocketmq.client.consumer.DefaultMQPushConsumer;
 import org.apache.rocketmq.client.consumer.listener.ConsumeConcurrentlyStatus;
 import org.apache.rocketmq.client.consumer.listener.ConsumeOrderlyStatus;
@@ -37,8 +38,7 @@ public class RocketMqConsumer<T> implements InitializingBean, DisposableBean {
                             @Nullable String instanceName,
                             @NonNull AbstractMessageHandler<T> messageHandler) {
         super();
-        this.messageType = ((ParameterizedType) messageHandler.getClass().getGenericSuperclass()).getActualTypeArguments()[0];
-        log.debug("messageType {}", messageType != null ? messageType.getTypeName() : "null");
+        this.messageType = getGenericType(messageHandler.getClass(), 0);
 
         DefaultMQPushConsumer o = new DefaultMQPushConsumer(group);
         o.setNamesrvAddr(nameSrvAddr);
@@ -106,13 +106,35 @@ public class RocketMqConsumer<T> implements InitializingBean, DisposableBean {
         this.consumer = o;
     }
 
+    @Nullable
+    @SuppressWarnings("unchecked")
+    private static <T> Class<T> getGenericType(Class<?> clazz, int index) {
+        Type parameterizedType = clazz.getGenericSuperclass();
+        // CGLUB subclass target object(泛型在父类上)
+        if (!(parameterizedType instanceof ParameterizedType)) {
+            parameterizedType = clazz.getSuperclass().getGenericSuperclass();
+        }
+        if (!(parameterizedType instanceof ParameterizedType)) {
+            return null;
+        }
+        Type[] actualTypeArguments = ((ParameterizedType) parameterizedType)
+                .getActualTypeArguments();
+        if (actualTypeArguments == null || actualTypeArguments.length == 0) {
+            return null;
+        }
+        return (Class<T>) actualTypeArguments[index];
+    }
+
     @SuppressWarnings("unchecked")
     private T convertMessage(MessageExt messageExt) {
-        if (Objects.equals(messageType.getTypeName(), MessageExt.class.getTypeName())) {
+        log.debug("messageType {}", messageType != null ? messageType.getTypeName() : "null");
+        if (this.messageType == null ||
+                StringUtils.equals(messageType.getTypeName(), Object.class.getTypeName()) ||
+                StringUtils.equals(messageType.getTypeName(), MessageExt.class.getTypeName())) {
             return (T) messageExt;
         } else {
             String str = new String(messageExt.getBody(), RocketMqProducer.DEFAULT_CHARSET);
-            if (Objects.equals(messageType.getTypeName(), String.class.getTypeName())) {
+            if (StringUtils.equals(messageType.getTypeName(), String.class.getTypeName())) {
                 return (T) str;
             } else {
                 // If msgType not string, use objectMapper change it.
