@@ -83,12 +83,15 @@ class RocketmqSpringbootApplicationTests {
         Assertions.assertEquals(payload, receiveMessage.getContent());
     }
 
-    private static boolean contains(@NonNull Set<RocketmqSpringbootApplication.OrderInfo> consumerMessageContainer, @NonNull String keys) {
+    private static boolean contains(@NonNull Set<RocketmqSpringbootApplication.OrderInfo> consumerMessageContainer,
+                                    @NonNull String keys) {
         return Objects.nonNull(getByKey(consumerMessageContainer, keys));
     }
 
     @Nullable
-    private static RocketmqSpringbootApplication.OrderInfo getByKey(@NonNull Set<RocketmqSpringbootApplication.OrderInfo> consumerMessageContainer, @NonNull String keys) {
+    private static RocketmqSpringbootApplication.OrderInfo getByKey(
+            @NonNull Set<RocketmqSpringbootApplication.OrderInfo> consumerMessageContainer,
+            @NonNull String keys) {
         return consumerMessageContainer.stream()
                 .filter(o -> StringUtils.equals(o.getKey(), keys)
                 ).findFirst().orElse(null);
